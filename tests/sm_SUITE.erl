@@ -773,7 +773,7 @@ assert_no_offline_msgs() ->
             0 = length(escalus_ejabberd:rpc(mnesia, dirty_match_object, [Pattern]));
         mod_offline_odbc ->
             {selected, _, [{<<"0">>}]} =
-            escalus_ejabberd:rpc(ejabberd_odbc,sql_query, [<<"localhost">>,<<"select count(*) from offline_message;">>])
+            escalus_ejabberd:rpc(ejabberd_odbc,sql_query, [<<"localhost">>,[<<"select count(*) from offline_message;">>]])
     end.
 
 
