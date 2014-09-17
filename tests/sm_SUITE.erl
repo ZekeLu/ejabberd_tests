@@ -772,8 +772,15 @@ assert_no_offline_msgs() ->
                                            [offline_msg, wild_pattern]),
             0 = length(escalus_ejabberd:rpc(mnesia, dirty_match_object, [Pattern]));
         mod_offline_odbc ->
-            {selected, _, [{<<"0">>}]} =
-            escalus_ejabberd:rpc(ejabberd_odbc,sql_query, [<<"localhost">>,[<<"select count(*) from offline_message;">>]])
+            {selected, _, [{NumO}]} =
+            escalus_ejabberd:rpc(ejabberd_odbc,sql_query, [<<"localhost">>,[<<"select count(*) from offline_message;">>]]),
+            Num = case NumO of
+                      _ when is_binary(NumO) ->
+                          list_to_integer(binary_to_list(NumO));
+                      _ ->
+                          NumO
+                  end,
+            0 = Num
     end.
 
 
