@@ -21,19 +21,14 @@
 
 all() ->
     [{group, registration},
-     {group, change_password},
-     {group, unregistration}].
+     {group, change_password}].
 
 groups() ->
-    %% TOFIX:
-    %%      test changing password
-    %%      test remove/change password after login
     [{registration, [register_with_phone,
                      register_with_email,
                      register_with_phone_and_email,
                      register_with_weak_password]},
-     {change_password, [change_password]},
-     {unregistration, [unregister]}
+     {change_password, [change_password]}
     ].
 
 suite() ->
@@ -56,22 +51,23 @@ end_per_group(_GroupName, _Config) ->
     ok.
 
 init_per_testcase(change_password, Config) ->
-    {Name, UserSpec} = escalus_users:get_user_by_name(alice),
-    escalus_users:create_user(Config, {Name, UserSpec}),
-    ClientProps = escalus_users:get_options(Config, UserSpec),
-    {ok, Conn, ClientProps, _} = escalus_connection:start(ClientProps),
-    [{connection, Conn} | Config];
-init_per_testcase(unregister, Config) ->
-    {Name, UserSpec} = escalus_users:get_user_by_name(alice),
-    escalus_users:create_user(Config, {Name, UserSpec}),
-    ClientProps = escalus_users:get_options(Config, UserSpec),
-    {ok, Conn, ClientProps, _} = escalus_connection:start(ClientProps),
-    [{connection, Conn} | Config];
+    do_register(Config, phone),
+    [{new_password, <<"deih38js">>} | Config];
 init_per_testcase(_CaseName, Config) ->
     Config.
 
+end_per_testcase(register_with_phone, Config) ->
+    delete_user(Config, phone);
+end_per_testcase(register_with_email, Config) ->
+    delete_user(Config, email);
+end_per_testcase(register_with_phone_and_email, Config) ->
+    delete_user(Config, phone_and_email);
+end_per_testcase(change_password, Config) ->
+    {_Name, UserSpec} = get_aft_user_by_name(phone),
+    NewUserSpec = proplists:delete(password, UserSpec),
+    NewPassword = proplists:get_value(new_password, Config),
+    delete_user(Config, [{password, NewPassword} | NewUserSpec]);
 end_per_testcase(_CaseName, _Config) ->
-    %% TOFIX: it should delete the user after the register test case.
     ok.
 
 %%--------------------------------------------------------------------
@@ -113,29 +109,16 @@ register_with_weak_password(Config) ->
 %%--------------------------------------------------------------------
 
 change_password(Config) ->
-    Conn = proplists:get_value(connection, Config),
-    {Name, UserSpec} = escalus_users:get_user_by_name(alice),
+    {_Name, UserSpec} = get_aft_user_by_name(phone),
+
+    ClientProps = escalus_users:get_options(Config, UserSpec),
+    {ok, Conn, ClientProps, _} = escalus_connection:start(ClientProps),
     OldPassword = proplists:get_value(password, UserSpec),
-    NewPassword = <<"xdwegk32">>,
+    NewPassword = proplists:get_value(new_password, Config),
     escalus_connection:send(Conn, change_password_stanza(OldPassword, NewPassword)),
     {ok, result, _} = wait_for_result(Conn),
-    escalus_connection:stop(Conn),
+    escalus_connection:stop(Conn).
 
-    NewUserSpec = proplists:delete(password, UserSpec),
-    escalus_users:delete_user(Config, {Name, [{password, NewPassword} | NewUserSpec]}).
-
-%%--------------------------------------------------------------------
-%% Unregistration tests
-%%--------------------------------------------------------------------
-unregister(Config) ->
-    {value, Deregistarations} = get_counter_value(modUnregisterCount),
-
-    Conn = proplists:get_value(connection, Config),
-    escalus_connection:send(Conn, remove_account()),
-    wait_for_result(Conn),
-    escalus_connection:stop(Conn),
-
-    assert_counter(Deregistarations + 1, modUnregisterCount).
 
 %%--------------------------------------------------------------------
 %% Helpers
@@ -215,3 +198,13 @@ change_password_stanza(OldPassword, NewPassword) ->
                                           #xmlel{name = <<"password">>, children = [exml:escape_cdata(NewPassword)]}]
                              }
                       ]).
+
+delete_user(Config, Name) when is_atom(Name) ->
+    {_Name, UserSpec} = get_aft_user_by_name(Name),
+    delete_user(Config, UserSpec);
+delete_user(Config, UserSpec) ->
+    ClientProps = escalus_users:get_options(Config, UserSpec),
+    {ok, Conn, ClientProps, _} = escalus_connection:start(ClientProps),
+    escalus_connection:send(Conn, remove_account()),
+    wait_for_result(Conn),
+    escalus_connection:stop(Conn).
