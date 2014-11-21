@@ -54,7 +54,7 @@ groups() ->
         {stats, [sequence], stats()}
      ].
 
-accounts() -> [change_password, check_password_hash, check_password,
+accounts() -> [change_password, check_password,
                check_account, ban_account, num_active_users, delete_old_users,
                delete_old_users_vhost].
 
@@ -127,13 +127,11 @@ init_per_testcase(CaseName, Config)
         true -> {skip, vhost_odbc_incompatible};
         false -> escalus:init_per_testcase(CaseName, Config)
     end;
-init_per_testcase(CaseName, Config)
-    when CaseName == check_password_hash;
-         CaseName == delete_old_users ->
+init_per_testcase(delete_old_users, Config) ->
     {_, AuthMods} = lists:keyfind(ctl_auth_mods, 1, Config),
     case lists:member(ejabberd_auth_ldap, AuthMods) of
         true -> {skip, not_fully_supported_with_ldap};
-        false -> escalus:init_per_testcase(CaseName, Config)
+        false -> escalus:init_per_testcase(delete_old_users, Config)
     end;
 init_per_testcase(CaseName, Config) ->
     escalus:init_per_testcase(CaseName, Config).
@@ -160,17 +158,6 @@ change_password(Config) ->
     {error, {connection_step_failed, _, _}} = escalus_client:start_for(Config, alice, <<"newres">>),
     ejabberdctl("change_password", [User, Domain, OldPassword], Config),
     {ok, _Alice2} = escalus_client:start_for(Config, alice, <<"newres2">>).
-
-check_password_hash(Config) ->
-    {User, Domain, Pass} = get_user_data(alice, Config),
-    MD5Hash = get_md5(Pass),
-    MD5HashBad = get_md5(<<Pass/binary, "bad">>),
-    SHAHash = get_sha(Pass),
-
-    {_, 0} = ejabberdctl("check_password_hash", [User, Domain, MD5Hash, "md5"], Config),
-    {_, ErrCode} = ejabberdctl("check_password_hash", [User, Domain, MD5HashBad, "md5"], Config),
-    true = (ErrCode =/= 0), %% Must return code other than 0
-    {_, 0} = ejabberdctl("check_password_hash", [User, Domain, SHAHash, "sha"], Config).
 
 check_password(Config) ->
     {User, Domain, Pass} = get_user_data(alice, Config),
