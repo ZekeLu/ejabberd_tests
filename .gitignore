@@ -3,3 +3,5 @@
 /ebin
 /deps
 /cover_summary.txt
+/logs
+/.rebar
