@@ -9,7 +9,7 @@
 %% http://www.erlang.org/doc/apps/common_test/run_test_chapter.html#test_specifications
 
 {suites, "tests", adhoc_SUITE}.
-{suites, "tests", aft_register_SUITE}.
+%%s{suites, "tests", aft_register_SUITE}.
 {suites, "tests", amp_SUITE}.
 {suites, "tests", carboncopy_SUITE}.
 {suites, "tests", ejabberdctl_SUITE}.
